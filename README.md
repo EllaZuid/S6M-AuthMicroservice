@@ -1,1 +1,1 @@
-# S6M-AuthMicroservice
+# S6M-Microservices
