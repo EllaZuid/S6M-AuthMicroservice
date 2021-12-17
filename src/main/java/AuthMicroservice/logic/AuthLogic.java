@@ -73,7 +73,7 @@ public class AuthLogic {
         return user;
     }
 
-    private String createToken(String username, Long id) {
+    public String createToken(String username, Long id) {
         Claims claims = Jwts.claims().setSubject(username);
         Date now = new Date();
         Date validity = new Date(now.getTime() + validityInMilliseconds);

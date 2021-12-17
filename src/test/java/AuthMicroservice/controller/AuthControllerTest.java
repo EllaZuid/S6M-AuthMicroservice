@@ -3,7 +3,11 @@ package AuthMicroservice.controller;
 import AuthMicroservice.DTO.TokenDTO;
 import AuthMicroservice.entity.User;
 import AuthMicroservice.logic.AuthLogic;
+import AuthMicroservice.repo.IUserRepo;
 import AuthMicroservice.security.PasswordHashing;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,13 +16,18 @@ import org.springframework.http.ResponseEntity;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Date;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class AuthControllerTest {
 
-    AuthLogic authLogicMock = mock(AuthLogic.class);
+    IUserRepo userRepoMock = mock(IUserRepo.class);
+    AuthLogic authLogic = new AuthLogic(userRepoMock);
 
     AuthController authController;
     PasswordHashing hash;
@@ -26,111 +35,114 @@ class AuthControllerTest {
     @BeforeEach
     public void setUp()
     {
-        authController = new AuthController(authLogicMock);
-        org.springframework.test.util.ReflectionTestUtils.setField(authLogicMock, "secretKey", "Unit Test Secret Key klsadjfvksdkjlfhsa;kjvjkajshfeasd548f46asd51v5as4df532as1d53f4");
-        org.springframework.test.util.ReflectionTestUtils.setField(authLogicMock, "validityInMilliseconds", 7200000);
-    }
-
-    @Test
-    void register() throws InvalidKeySpecException, NoSuchAlgorithmException {
-        ResponseEntity returnResponseEntity;
-        ResponseEntity expectedResponseEntity = new ResponseEntity(HttpStatus.OK);
-
-        User user = createUser();
-
-        when(authLogicMock.register(any())).thenReturn(createUser());
-        returnResponseEntity = authController.register(user);
-
-        Assertions.assertEquals(expectedResponseEntity.getStatusCode(), returnResponseEntity.getStatusCode());
-        verify(authLogicMock, times(1)).register(any());
+        authController = new AuthController(authLogic);
+        hash = new PasswordHashing();
+        org.springframework.test.util.ReflectionTestUtils.setField(authLogic, "secretKey", "Unit Test Secret Key klsadjfvksdkjlfhsa;kjvjkajshfeasd548f46asd51v5as4df532as1d53f4");
+        org.springframework.test.util.ReflectionTestUtils.setField(authLogic, "validityInMilliseconds", 7200000);
     }
 
     @Test
     void login() throws InvalidKeySpecException, NoSuchAlgorithmException{
-        TokenDTO returnToken = new TokenDTO();
-        returnToken.setToken("ThisIsAValidToken");
+        User databaseUser = createUser();
+        User user = createUser();
+        String generatedSecuredPasswordHash = hash.generateStrongPasswordHash(databaseUser.getPassword());
+        databaseUser.setPassword(generatedSecuredPasswordHash);
+        List<User> users = new ArrayList<>();
+        users.add(databaseUser);
+        TokenDTO returntoken = new TokenDTO();
+        returntoken.setToken(authLogic.createToken(user.getUname(), user.getId()));
         ResponseEntity<TokenDTO> returnResponseEntity;
-        ResponseEntity<TokenDTO> expectedResponseEntity = new ResponseEntity(returnToken, HttpStatus.OK);
+        ResponseEntity<TokenDTO> expectedResponseEntity = new ResponseEntity<>(returntoken, HttpStatus.OK);
 
-        when(authLogicMock.login(any())).thenReturn(returnToken);
-        returnResponseEntity = authController.login(createUser());
+        when(userRepoMock.findAll()).thenReturn(users);
+        returnResponseEntity = authController.login(user);
 
         Assertions.assertEquals(expectedResponseEntity.getStatusCode(), returnResponseEntity.getStatusCode());
-        Assertions.assertEquals(expectedResponseEntity.getBody().getToken(), returnResponseEntity.getBody().getToken());
-        verify(authLogicMock, times(1)).login(any());
+        Assertions.assertNotEquals(null, returnResponseEntity.getBody().getToken());
     }
 
     @Test
-    void loginNoPassword() throws InvalidKeySpecException, NoSuchAlgorithmException{
-        TokenDTO returnToken = new TokenDTO();
-        returnToken.setToken("");
+    void FalseLogin() throws InvalidKeySpecException, NoSuchAlgorithmException{
+        User databaseUser = createUser();
+        databaseUser.setUname("DifferentName"); //Changing database user with different username
+        User user = createUser();
+        String generatedSecuredPasswordHash = hash.generateStrongPasswordHash(databaseUser.getPassword());
+        databaseUser.setPassword(generatedSecuredPasswordHash);
+        List<User> users = new ArrayList<>();
+        users.add(databaseUser);
+        TokenDTO returntoken = new TokenDTO();
+        returntoken.setToken(authLogic.createToken(user.getUname(), user.getId()));
         ResponseEntity<TokenDTO> returnResponseEntity;
-        ResponseEntity<TokenDTO> expectedResponseEntity = new ResponseEntity(HttpStatus.BAD_REQUEST);
+        ResponseEntity<TokenDTO> expectedResponseEntity = new ResponseEntity<>(returntoken, HttpStatus.BAD_REQUEST);
 
-        when(authLogicMock.login(any())).thenReturn(returnToken);
-        returnResponseEntity = authController.login(createNoPasswordUser());
+        when(userRepoMock.findAll()).thenReturn(users);
+        returnResponseEntity = authController.login(user);
 
         Assertions.assertEquals(expectedResponseEntity.getStatusCode(), returnResponseEntity.getStatusCode());
-        Assertions.assertEquals(expectedResponseEntity, returnResponseEntity);
+        Assertions.assertEquals(null, returnResponseEntity.getBody());
     }
 
     @Test
-    void loginNoUsername() throws InvalidKeySpecException, NoSuchAlgorithmException{
-        TokenDTO returnToken = new TokenDTO();
-        returnToken.setToken("");
-        ResponseEntity<TokenDTO> returnResponseEntity;
-        ResponseEntity<TokenDTO> expectedResponseEntity = new ResponseEntity(HttpStatus.BAD_REQUEST);
+    void register() throws InvalidKeySpecException, NoSuchAlgorithmException {
+        User databaseUser = createUser();
+        User user = createUserRegister();
+        String generatedSecuredPasswordHash = hash.generateStrongPasswordHash(databaseUser.getPassword());
+        databaseUser.setPassword(generatedSecuredPasswordHash);
+        List<User> users = new ArrayList<>();
+        users.add(databaseUser);
+        ResponseEntity returnResponseEntity;
+        ResponseEntity expectedResponseEntity = new ResponseEntity(HttpStatus.OK);
 
-        when(authLogicMock.login(any())).thenReturn(returnToken);
-        returnResponseEntity = authController.login(createNoUsernameUser());
+        when(userRepoMock.findAll()).thenReturn(users);
+        returnResponseEntity = authController.register(user);
 
         Assertions.assertEquals(expectedResponseEntity.getStatusCode(), returnResponseEntity.getStatusCode());
-        Assertions.assertEquals(expectedResponseEntity, returnResponseEntity);
     }
 
     @Test
-    void loginEmpytyUser() throws InvalidKeySpecException, NoSuchAlgorithmException{
-        TokenDTO returnToken = new TokenDTO();
-        returnToken.setToken("");
-        ResponseEntity<TokenDTO> returnResponseEntity;
-        ResponseEntity<TokenDTO> expectedResponseEntity = new ResponseEntity(HttpStatus.BAD_REQUEST);
+    public void registerDoubleName() throws InvalidKeySpecException, NoSuchAlgorithmException
+    {
+        User databaseUser = createUser();
+        User user = createUser();
+        String generatedSecuredPasswordHash = hash.generateStrongPasswordHash(databaseUser.getPassword());
+        databaseUser.setPassword(generatedSecuredPasswordHash);
+        List<User> users = new ArrayList<>();
+        users.add(databaseUser);
+        ResponseEntity returnResponseEntity;
+        ResponseEntity expectedResponseEntity = new ResponseEntity(HttpStatus.BAD_REQUEST);
 
-        when(authLogicMock.login(any())).thenReturn(returnToken);
-        returnResponseEntity = authController.login(createEmptyUser());
+        when(userRepoMock.findAll()).thenReturn(users);
+        returnResponseEntity = authController.register(user);
 
         Assertions.assertEquals(expectedResponseEntity.getStatusCode(), returnResponseEntity.getStatusCode());
-        Assertions. assertEquals(expectedResponseEntity, returnResponseEntity);
+    }
+
+    @Test
+    public void registerHash() throws InvalidKeySpecException, NoSuchAlgorithmException
+    {
+        User user = createUser();
+
+        String generatedSecuredPasswordHash = hash.generateStrongPasswordHash(user.getPassword());
+
+        System.out.println(generatedSecuredPasswordHash);
+        Assertions.assertNotEquals(user, generatedSecuredPasswordHash);
     }
 
     private User createUser()
     {
         User user =  new User();
+        user.setId(1L);
         user.setUname("test2");
         user.setPassword("test2");
         return user;
     }
 
-    private User createEmptyUser()
+    private User createUserRegister()
     {
         User user =  new User();
-        user.setUname("");
-        user.setPassword("");
-        return user;
-    }
-
-    private User createNoUsernameUser()
-    {
-        User user =  new User();
-        user.setUname("");
-        user.setPassword("test2");
-        return user;
-    }
-
-    private User createNoPasswordUser()
-    {
-        User user =  new User();
-        user.setUname("test2");
-        user.setPassword("");
+        user.setId(1L);
+        user.setUname("test3");
+        user.setPassword("test3");
         return user;
     }
 }
