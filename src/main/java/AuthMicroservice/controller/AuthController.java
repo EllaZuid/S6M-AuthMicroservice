@@ -1,5 +1,6 @@
 package AuthMicroservice.controller;
 
+import AuthMicroservice.DTO.UserDTO;
 import AuthMicroservice.DTO.TokenDTO;
 import AuthMicroservice.entity.User;
 import AuthMicroservice.logic.AuthLogic;
@@ -31,22 +32,30 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<TokenDTO> login(@RequestBody User user) throws InvalidKeySpecException, NoSuchAlgorithmException
+    public ResponseEntity<TokenDTO> login(@RequestBody UserDTO newUser) throws InvalidKeySpecException, NoSuchAlgorithmException
     {
-        if (user.getUname().isBlank() || user.getPassword().isBlank()){
-            return new ResponseEntity(HttpStatus.BAD_REQUEST);
+        if (newUser.getUname().isBlank() || newUser.getPassword().isBlank()){
+            return new ResponseEntity<TokenDTO>(HttpStatus.BAD_REQUEST);
         }
+
+        User user = convertUserDTOToUser(newUser);
 
         TokenDTO token = this.auth.login(user);
         if (token != null)
-            return new ResponseEntity(token, HttpStatus.OK);
+            return new ResponseEntity<TokenDTO>(token, HttpStatus.OK);
         else
-            return new ResponseEntity(HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<TokenDTO>(HttpStatus.BAD_REQUEST);
     }
 
     @PostMapping("/register")
-    public ResponseEntity register(@RequestBody User user) throws InvalidKeySpecException, NoSuchAlgorithmException
+    public ResponseEntity register(@RequestBody UserDTO newUser) throws InvalidKeySpecException, NoSuchAlgorithmException
     {
+        if (newUser.getUname().isBlank() || newUser.getPassword().isBlank()){
+            return new ResponseEntity(HttpStatus.BAD_REQUEST);
+        }
+
+        User user = convertUserDTOToUser(newUser);
+
         User generalUser = this.auth.register(user);
         if (generalUser != null)
             return new ResponseEntity(HttpStatus.OK);
@@ -55,5 +64,14 @@ public class AuthController {
 
     }
 
+    private User convertUserDTOToUser(UserDTO newUser){
+        String username = newUser.getUname();
+        String password = newUser.getPassword();
+
+        User user = new User();
+        user.setUname(username);
+        user.setPassword(password);
+        return user;
+    }
 
 }

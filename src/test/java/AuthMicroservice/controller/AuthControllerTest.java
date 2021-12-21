@@ -1,13 +1,11 @@
 package AuthMicroservice.controller;
 
+import AuthMicroservice.DTO.UserDTO;
 import AuthMicroservice.DTO.TokenDTO;
 import AuthMicroservice.entity.User;
 import AuthMicroservice.logic.AuthLogic;
 import AuthMicroservice.repo.IUserRepo;
 import AuthMicroservice.security.PasswordHashing;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,11 +15,8 @@ import org.springframework.http.ResponseEntity;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Date;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class AuthControllerTest {
@@ -44,7 +39,7 @@ class AuthControllerTest {
     @Test
     void login() throws InvalidKeySpecException, NoSuchAlgorithmException{
         User databaseUser = createUser();
-        User user = createUser();
+        UserDTO user = createUserDTO();
         String generatedSecuredPasswordHash = hash.generateStrongPasswordHash(databaseUser.getPassword());
         databaseUser.setPassword(generatedSecuredPasswordHash);
         List<User> users = new ArrayList<>();
@@ -65,7 +60,7 @@ class AuthControllerTest {
     void FalseLogin() throws InvalidKeySpecException, NoSuchAlgorithmException{
         User databaseUser = createUser();
         databaseUser.setUname("DifferentName"); //Changing database user with different username
-        User user = createUser();
+        UserDTO user = createUserDTO();
         String generatedSecuredPasswordHash = hash.generateStrongPasswordHash(databaseUser.getPassword());
         databaseUser.setPassword(generatedSecuredPasswordHash);
         List<User> users = new ArrayList<>();
@@ -85,7 +80,7 @@ class AuthControllerTest {
     @Test
     void register() throws InvalidKeySpecException, NoSuchAlgorithmException {
         User databaseUser = createUser();
-        User user = createUserRegister();
+        UserDTO user = createUserRegister();
         String generatedSecuredPasswordHash = hash.generateStrongPasswordHash(databaseUser.getPassword());
         databaseUser.setPassword(generatedSecuredPasswordHash);
         List<User> users = new ArrayList<>();
@@ -100,10 +95,10 @@ class AuthControllerTest {
     }
 
     @Test
-    public void registerDoubleName() throws InvalidKeySpecException, NoSuchAlgorithmException
+    void registerDoubleName() throws InvalidKeySpecException, NoSuchAlgorithmException
     {
         User databaseUser = createUser();
-        User user = createUser();
+        UserDTO user = createUserDTO();
         String generatedSecuredPasswordHash = hash.generateStrongPasswordHash(databaseUser.getPassword());
         databaseUser.setPassword(generatedSecuredPasswordHash);
         List<User> users = new ArrayList<>();
@@ -118,14 +113,23 @@ class AuthControllerTest {
     }
 
     @Test
-    public void registerHash() throws InvalidKeySpecException, NoSuchAlgorithmException
+    void registerHash() throws InvalidKeySpecException, NoSuchAlgorithmException
     {
-        User user = createUser();
+        UserDTO user = createUserDTO();
 
         String generatedSecuredPasswordHash = hash.generateStrongPasswordHash(user.getPassword());
 
         System.out.println(generatedSecuredPasswordHash);
         Assertions.assertNotEquals(user, generatedSecuredPasswordHash);
+    }
+
+    private UserDTO createUserDTO()
+    {
+        UserDTO user =  new UserDTO();
+        user.setId(1L);
+        user.setUname("test2");
+        user.setPassword("test2");
+        return user;
     }
 
     private User createUser()
@@ -137,9 +141,9 @@ class AuthControllerTest {
         return user;
     }
 
-    private User createUserRegister()
+    private UserDTO createUserRegister()
     {
-        User user =  new User();
+        UserDTO user =  new UserDTO();
         user.setId(1L);
         user.setUname("test3");
         user.setPassword("test3");
