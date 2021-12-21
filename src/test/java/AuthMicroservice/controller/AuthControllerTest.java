@@ -120,7 +120,7 @@ class AuthControllerTest {
         String generatedSecuredPasswordHash = hash.generateStrongPasswordHash(user.getPassword());
 
         System.out.println(generatedSecuredPasswordHash);
-        Assertions.assertNotEquals(user, generatedSecuredPasswordHash);
+        Assertions.assertNotEquals(user.getPassword(), generatedSecuredPasswordHash);
     }
 
     private UserDTO createUserDTO()
