@@ -24,13 +24,6 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter
         this.jwtTokenProvider = jwtTokenProvider;
     }
 
-//    @Bean
-//    @Override
-//    public AuthenticationManager authenticationManagerBean() throws Exception
-//    {
-//        return super.authenticationManagerBean();
-//    }
-
     @Override
     protected void configure(HttpSecurity http) throws Exception
     {
